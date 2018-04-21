@@ -44,8 +44,6 @@ void* ProtobufPlugin::zmqcontext = nullptr;
 ProtobufPlugin::ProtobufPlugin()
     : GenericProcessor  ("Protobuf Module")
     , Thread            ("ProtobufThread")
-    , threshold         (200.0)
-    , bufferZone        (5.0f)
     , state             (false)
 {
     setProcessorType (PROCESSOR_TYPE_SOURCE);
@@ -93,7 +91,6 @@ bool ProtobufPlugin::closesocket()
 {
     std::cout << "Disabling network node" << std::endl;
 
-#ifdef ZEROMQ
     if (threadRunning)
     {
 		lock.enter();
@@ -111,21 +108,21 @@ bool ProtobufPlugin::closesocket()
             createZmqContext();// and this will take care that processor graph doesn't attempt to delete the context again
 	
     }
-#endif
+
     return true;
 }
 
 
 void ProtobufPlugin::createEventChannels()
 {
-	EventChannel* chan = new EventChannel(EventChannel::TEXT, 1, MAX_MESSAGE_LENGTH, CoreServices::getGlobalSampleRate(), this);
-	chan->setName("Network messages");
-	chan->setDescription("Messages received through the network events module");
-	chan->setIdentifier("external.network.rawData");
-	chan->addEventMetaData(new MetaDataDescriptor(MetaDataDescriptor::INT64, 1, "Software timestamp",
-		"OS high resolution timer count when the event was received", "timestamp.software"));
-	eventChannelArray.add(chan);
-	messageChannel = chan;
+	//EventChannel* chan = new EventChannel(EventChannel::TEXT, 1, MAX_MESSAGE_LENGTH, CoreServices::getGlobalSampleRate(), this);
+	//chan->setName("Network messages");
+	//chan->setDescription("Messages received through the network events module");
+	//chan->setIdentifier("external.network.rawData");
+	//chan->addEventMetaData(new MetaDataDescriptor(MetaDataDescriptor::INT64, 1, "Software timestamp",
+	//	"OS high resolution timer count when the event was received", "timestamp.software"));
+	//eventChannelArray.add(chan);
+	//messageChannel = chan;
 }
 
 
@@ -151,7 +148,7 @@ void ProtobufPlugin::setParameter(int parameterIndex, float newValue)
 }
 
 
-String ProtobufPlugin::handleSpecialMessages()
+String ProtobufPlugin::handleMessage(String msg)
 {
 	/**
 
@@ -274,16 +271,16 @@ void ProtobufPlugin::process(AudioSampleBuffer& buffer)
 {
     setTimestampAndSamples(CoreServices::getGlobalTimestamp(),0);
 
-    //lock.enter();
+    lock.enter();
     //while (! networkMessagesQueue.empty())
     //{
     //    String msg = networkMessagesQueue.front();
     //    postTimestamppedStringToMidiBuffer (msg);
-    //    CoreServices::sendStatusMessage ( ("Network event received: " + msg.getString()).toRawUTF8());
+        
     //    networkMessagesQueue.pop();
     //}
 
-    //lock.exit();
+    lock.exit();
 }
 
 
@@ -315,14 +312,17 @@ void ProtobufPlugin::run()
     {
         result = zmq_recv (responder, buffer, MAX_MESSAGE_LENGTH - 1, 0);  // blocking
 
-        juce::int64 timestamp_software = timer.getHighResolutionTicks();
-
         if (result < 0) // will only happen when responder dies.
             break;
 
-        //StringTS Msg (buffer, result, timestamp_software);
+		//String msg(buffer);
+
         if (result > 0)
         {
+			//handleMessage(msg);
+
+			CoreServices::sendStatusMessage("Network event received");
+
             //lock.enter();
             //networkMessagesQueue.push (Msg);
             //lock.exit();
@@ -330,8 +330,9 @@ void ProtobufPlugin::run()
             //std::cout << "Received message!" << std::endl;
             // handle special messages
             //String response = handleSpecialMessages (Msg);
+			String response = "hi.";
 
-            //zmq_send (responder, response.getCharPointer(), response.length(), 0);
+            zmq_send (responder, response.getCharPointer(), response.length(), 0);
         }
         else
         {
@@ -403,12 +404,10 @@ void ProtobufPlugin::loadCustomParametersFromXml()
 
 void ProtobufPlugin::createZmqContext()
 {
-#ifdef ZEROMQ
 	lock.enter();
     if (zmqcontext == nullptr)
         zmqcontext = zmq_ctx_new(); //<-- this is only available in version 3+
 	lock.exit();
-#endif
 }
 
 

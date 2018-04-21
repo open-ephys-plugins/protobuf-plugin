@@ -70,21 +70,13 @@ public:
 
     int getDefaultNumOutputs() const;
 
-    //int64 getExtrapolatedHardwareTimestamp (int64 softwareTS) const;
 
-    String handleSpecialMessages();
+    String handleMessage(String msg);
     std::vector<String> splitString (String S, char sep);
 
-    void initSimulation();
-    void simulateDesignAndTrials ();
-    void simulateSingleTrial();
-    void simulateStartRecord();
-    void simulateStopRecord();
     void run();
     void opensocket();
     bool closesocket();
-
-   // void postTimestamppedStringToMidiBuffer (StringTS s);
     void setNewListeningPort (int port);
 
     int urlport;
@@ -98,14 +90,8 @@ private:
     //* Split network message into name/value pairs (name1=val1 name2=val2 etc) */
     StringPairArray parseNetworkMessage (String msg);
 
-   // StringTS createStringTS (String S, int64 t);
-
     static void* zmqcontext;
     void* responder;
-
-    float threshold;
-    float bufferZone;
-
     bool state;
     bool shutdown;
     bool firstTime;
@@ -113,11 +99,8 @@ private:
     Time timer;
 
     std::queue<String> networkMessagesQueue;
-    std::queue<String> simulation;
-
     CriticalSection lock;
-    int64 simulationStartTime;
-
+ 
 	const EventChannel* messageChannel{ nullptr };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProtobufPlugin);
