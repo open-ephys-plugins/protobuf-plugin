@@ -32,48 +32,38 @@ ProtobufPluginEditor::ProtobufPluginEditor(GenericProcessor* parentNode, bool us
 {
 	desiredWidth = 180;
 
-    urlLabel = new Label("Port", "Port:");
-    urlLabel->setBounds(20,80,140,25);
-    addAndMakeVisible(urlLabel);
-	ProtobufPlugin *p= (ProtobufPlugin *)getProcessor();
+	ProtobufPlugin *p = (ProtobufPlugin *)getProcessor();
+
+    portLabel = new Label("Port", "Port:");
+	portLabel->setBounds(20, 95, 140, 25);
+	addAndMakeVisible(portLabel);
+	
+	urlLabel = new Label("URL", "URL:");
+	urlLabel->setBounds(20,65, 140, 25);
+	addAndMakeVisible(urlLabel);
 
 	restartConnection = new UtilityButton("Restart Connection",Font("Default", 15, Font::plain));
-    restartConnection->setBounds(20,45,150,18);
+    restartConnection->setBounds(20,30,150,18);
     restartConnection->addListener(this);
     addAndMakeVisible(restartConnection);
 
-	
-	/*
-	trialSimulation = new UtilityButton("Trial",Font("Default", 15, Font::plain));
-    trialSimulation->setBounds(20,25,80,18);
-    trialSimulation->addListener(this);
-    addAndMakeVisible(trialSimulation);
+	portEditor = new Label("Port", String(p->urlport));
+	portEditor->setBounds(70, 95, 80, 18);
+	portEditor->setFont(Font("Default", 15, Font::plain));
+	portEditor->setColour(Label::textColourId, Colours::white);
+	portEditor->setColour(Label::backgroundColourId, Colours::grey);
+	portEditor->setEditable(true);
+	portEditor->addListener(this);
+	addAndMakeVisible(portEditor);
 
-	
-	startRecord = new UtilityButton("Start Record",Font("Default", 15, Font::plain));
-    startRecord->setBounds(20,55,100,18);
-    startRecord->addListener(this);
-    addAndMakeVisible(startRecord);
-	*/
-
-	labelPort = new Label("Port", String(p->urlport));
-    labelPort->setBounds(70,85,80,18);
-    labelPort->setFont(Font("Default", 15, Font::plain));
-    labelPort->setColour(Label::textColourId, Colours::white);
-
-
-
-//		NetworkEvents *processor  = (NetworkEvents*) getProcessor();
-
-	//if (processor->threadRunning)
-		labelPort->setColour(Label::backgroundColourId, Colours::grey);
-//	else
-//		labelPort->setColour(Label::backgroundColourId, Colours::red);
-
-
-    labelPort->setEditable(true);
-    labelPort->addListener(this);
-    addAndMakeVisible(labelPort);
+	urlEditor = new Label("URL", String(p->url));
+	urlEditor->setBounds(70, 65, 100, 18);
+	urlEditor->setFont(Font("Default", 15, Font::plain));
+	urlEditor->setColour(Label::textColourId, Colours::white);
+	urlEditor->setColour(Label::backgroundColourId, Colours::grey);
+	urlEditor->setEditable(true);
+	urlEditor->addListener(this);
+	addAndMakeVisible(urlEditor);
 
     setEnabledState(false);
 
@@ -93,18 +83,27 @@ void ProtobufPluginEditor::buttonEvent(Button* button)
 
 void ProtobufPluginEditor::setLabelColor(juce::Colour color)
 {
-	labelPort->setColour(Label::backgroundColourId, color);
+	urlEditor->setColour(Label::backgroundColourId, color);
+	portEditor->setColour(Label::backgroundColourId, color);
 }
 
 
 void ProtobufPluginEditor::labelTextChanged(juce::Label *label)
 {
-	if (label == labelPort)
+	if (label == portEditor)
 	{
 	   Value val = label->getTextValue();
 
 		ProtobufPlugin *p= (ProtobufPlugin *)getProcessor();
 		p->setNewListeningPort(val.getValue());
+	}
+
+	else if (label == urlEditor)
+	{
+		Value val = label->getTextValue();
+
+		ProtobufPlugin *p = (ProtobufPlugin *)getProcessor();
+		p->setNewListeningUrl(val.getValue());
 	}
 }
 

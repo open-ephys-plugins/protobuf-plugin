@@ -75,7 +75,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>C:\Users\joshs\Documents\protobuf-3.5.1\src;C:\Users\joshs\Documents\GitHub\plugin-GUI\JuceLibraryCode\modules;C:\Users\joshs\Documents\GitHub\plugin-GUI\Source\Plugins\Headers;C:\Users\joshs\Documents\GitHub\plugin-GUI\JuceLibraryCode;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

@@ -78,10 +78,14 @@ public:
     void opensocket();
     bool closesocket();
     void setNewListeningPort (int port);
+	void setNewListeningUrl(String url);
 
     int urlport;
+	String url;
     String socketStatus;
     std::atomic<bool> threadRunning;
+
+	register_for_message message;
 
 
 private:
@@ -91,10 +95,13 @@ private:
     StringPairArray parseNetworkMessage (String msg);
 
     static void* zmqcontext;
-    void* responder;
+    void* router;
     bool state;
     bool shutdown;
     bool firstTime;
+
+	void register_for_msg(String message_id);
+	void handle_msg(std::string msg);
 
     Time timer;
 

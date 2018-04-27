@@ -50,9 +50,10 @@ public:
 private:
 
 	ScopedPointer<UtilityButton> restartConnection;
-    ScopedPointer<Label> urlLabel;
-	ScopedPointer<Label> labelPort;
-
+    ScopedPointer<Label> portLabel;
+	ScopedPointer<Label> portEditor;
+	ScopedPointer<Label> urlLabel;
+	ScopedPointer<Label> urlEditor;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ProtobufPluginEditor);
 

@@ -22,6 +22,7 @@
 */
 
 #include <stdio.h>
+#include <process.h>
 #include <string.h>
 #include "ProtobufPlugin.h"
 #include "ProtobufPluginEditor.h"
@@ -48,11 +49,15 @@ ProtobufPlugin::ProtobufPlugin()
 {
     setProcessorType (PROCESSOR_TYPE_SOURCE);
 
+	GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+	// # self.context = zmq.Context()
     createZmqContext();
 
     firstTime = true;
-    responder = nullptr;
-    urlport = 5556;
+    router = nullptr;
+    urlport = 9651;
+	url = "10.128.50.207";
     threadRunning = false;
 
     opensocket();
@@ -79,6 +84,22 @@ void ProtobufPlugin::setNewListeningPort(int port)
     opensocket();
 }
 
+void ProtobufPlugin::setNewListeningUrl(String _url)
+{
+	// first, close existing thread.
+	closesocket();
+
+	// allow some time for thread to quit
+#ifdef WIN32
+	Sleep(300);
+#else
+	usleep(300 * 1000);
+#endif
+
+	url = _url;
+	opensocket();
+}
+
 
 ProtobufPlugin::~ProtobufPlugin()
 {
@@ -94,7 +115,7 @@ bool ProtobufPlugin::closesocket()
     if (threadRunning)
     {
 		lock.enter();
-        zmq_close (responder);
+        zmq_close (router);
         zmq_ctx_destroy (zmqcontext); // this will cause the thread to exit
         zmqcontext = nullptr;
 		lock.exit();
@@ -289,61 +310,168 @@ void ProtobufPlugin::opensocket()
     startThread();
 }
 
+void ProtobufPlugin::register_for_msg(String msg_id)
+{
+	// # io.register_for_message('request_system_status', handle_system_status)
+
+	message_header* header = message.mutable_header(); // = message.header;
+	header->set_host(SystemStats::getComputerName().getCharPointer());
+	header->set_process(String("Open_Ephys").getCharPointer());
+	header->set_timestamp(9999.0);
+	header->set_message_id(msg_id.toStdString());
+
+	//message.set_allocated_header(header);
+	message.set_message_id(msg_id.toStdString());
+
+	std::cout << message.message_id() << std::endl;
+	
+	std::string resp1 = String("router").toStdString();
+	std::string message_id = String("register_for_message").toStdString();
+	std::string message_string = message.SerializeAsString();
+
+	int rc = zmq_send(router, resp1.c_str(), resp1.length(), ZMQ_SNDMORE);
+	rc = zmq_send(router, message_id.c_str(), message_id.length(), ZMQ_SNDMORE);
+	rc = zmq_send(router, message_string.c_str(), message_string.length(), 0);
+}
+
+void ProtobufPlugin::handle_msg(std::string msg)
+{
+	std::cout << "Handling that message." << std::endl;
+
+	//std::cout << msg << std::endl;
+
+	request_system_info rsi;
+	request_system_status rss;
+
+	std::string message_id;
+
+	if (rsi.ParseFromString(msg))
+	{
+		message_header header = rsi.header();
+		message_id = header.message_id();
+		std::cout << "Message id: " << header.message_id() << std::endl;
+	}
+
+	std::string info_string = "request_system_info";
+
+	std::cout << message_id << " " << info_string << std::endl;
+
+	if (true)
+	{
+
+		String id = String("system_info");
+
+		system_info info;
+		std::string version_string = String("version string").toStdString();
+		std::string revision_string = String("hi.").toStdString();
+		info.set_software_revision(version_string.c_str());
+		info.set_hardware_revision(revision_string.c_str());
+
+		message_header* header = info.mutable_header();
+		header->set_host(SystemStats::getComputerName().getCharPointer());
+		header->set_process(String("Open_Ephys").getCharPointer());
+		header->set_timestamp(9999.0);
+		header->set_message_id(id.toStdString());
+
+		std::string resp1 = String("router").toStdString();
+		std::string resp2 = id.toStdString();
+		std::string message_string = info.SerializeAsString();
+
+		int rc = zmq_send(router, resp1.c_str(), resp1.length(), ZMQ_SNDMORE);
+		rc = zmq_send(router, resp2.c_str(), resp2.length(), ZMQ_SNDMORE);
+		rc = zmq_send(router, message_string.c_str(), message_string.length(), 0);
+
+	}
+
+}
 
 void ProtobufPlugin::run()
 {
+	// # io = ZMQHandler(messages)
+	// 
+    router = zmq_socket (zmqcontext, ZMQ_ROUTER);
+	int timeoutvalue = 100;
+	int probe_router = 1;
+	String identitystring = String("OpenEphys_") + SystemStats::getComputerName() + "_" + String(_getpid());
+	std::string identity = identitystring.toStdString();
+	zmq_setsockopt(router, ZMQ_RCVTIMEO, &timeoutvalue, sizeof timeoutvalue);
+	zmq_setsockopt(router, ZMQ_IDENTITY, identity.c_str(), identity.length());
+	zmq_setsockopt(router, ZMQ_PROBE_ROUTER, &probe_router, sizeof probe_router);
+    String full_url = String ("tcp://") + String(url) + ":" + String (urlport);
 
-    responder = zmq_socket (zmqcontext, ZMQ_REP);
-    String url= String ("tcp://*:") + String (urlport);
-    int rc = zmq_bind (responder, url.toRawUTF8());
+	std::cout << "Connecting to " << full_url << std::endl;
+    int rc = zmq_connect (router, full_url.toRawUTF8());
 
-    if (rc != 0)
-    {
-        // failed to open socket?
-        std::cout << "Failed to open socket: " << zmq_strerror (zmq_errno()) << std::endl;
-        return;
-    }
+	if (rc != 0)
+	{
+		// failed to open socket?
+		std::cout << "Failed to open socket: " << zmq_strerror(zmq_errno()) << std::endl;
+		return;
+	}
+
+	std::cout << "Registering for messages" << std::endl;
+	register_for_msg("request_system_info");
+    // # io.register_for_message('request_system_info', handle_system_info)
+	// # io.register_for_message('set_data_file_path', handle_set_data_file_path)
+
+	// set up polling
+	zmq_pollitem_t item[2];
+	item[0].socket = router;
+	item[0].events = ZMQ_POLLIN;
+	item[1].socket = router;
+	item[1].events = ZMQ_POLLIN;
 
     threadRunning = true;
     unsigned char* buffer = new unsigned char[MAX_MESSAGE_LENGTH];
     int result = -1;
 
-    while (threadRunning)
-    {
-        result = zmq_recv (responder, buffer, MAX_MESSAGE_LENGTH - 1, 0);  // blocking
+	int64_t more;
+	size_t more_size = sizeof more;
 
-        if (result < 0) // will only happen when responder dies.
-            break;
+	while (threadRunning)
+	{
+		int rc = zmq_poll(item, 2, -1);
 
-		//String msg(buffer);
+		if (item[0].revents & ZMQ_POLLIN)
+		{
+			std::cout << "Got a message!" << std::endl;
 
-        if (result > 0)
-        {
-			//handleMessage(msg);
+			int messageNum = 0;
+			String message_id;
 
-			CoreServices::sendStatusMessage("Network event received");
+			do {
+				rc = zmq_recv(router, buffer, MAX_MESSAGE_LENGTH - 1, 0);
+				
+				std::string s(reinterpret_cast<char const*> (buffer));
+				memset(buffer, 0, sizeof(buffer));
+	
+				//std::cout << messageNum << std::endl;
+				//std::cout << s << std::endl;
+				//std::cout << " " << std::endl;
 
-            //lock.enter();
-            //networkMessagesQueue.push (Msg);
-            //lock.exit();
+				if (messageNum == 0) // client
+				{
+					CoreServices::sendStatusMessage(String("Message received."));
+				}
+				else if (messageNum == 1) // message_id
+				{
+					//String message_id = msg;
+				}
+				else if (messageNum == 2)
+				{
+					handle_msg(s);
+				}
 
-            //std::cout << "Received message!" << std::endl;
-            // handle special messages
-            //String response = handleSpecialMessages (Msg);
-			String response = "hi.";
+				messageNum++;
 
-            zmq_send (responder, response.getCharPointer(), response.length(), 0);
-        }
-        else
-        {
-            String zeroMessageError = "Recieved Zero Message?!?!?";
-            //std::cout << "Received Zero Message!" << std::endl;
+				rc = zmq_getsockopt(router, ZMQ_RCVMORE, &more, &more_size);
 
-            //zmq_send (responder, zeroMessageError.getCharPointer(), zeroMessageError.length(), 0);
-        }
+			} while (more);
+
+		}
     }
 
-    zmq_close (responder);
+    zmq_close (router);
 
     delete[] buffer;
     threadRunning = false;
