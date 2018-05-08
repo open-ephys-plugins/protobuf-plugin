@@ -115,18 +115,28 @@ bool ProtobufPlugin::closesocket()
     if (threadRunning)
     {
 		lock.enter();
-        zmq_close (router);
-        zmq_ctx_destroy (zmqcontext); // this will cause the thread to exit
-        zmqcontext = nullptr;
-		lock.exit();
-
-		if (!stopThread(500))
+		std::cout << "Closing router." << std::endl;
+		if (zmq_close(router) == 0)
 		{
-			std::cerr << "Network thread timeout. Forcing thread termination, system could be lefr in an unstable state" << std::endl;
-		}
+			std::cout << "Destroying context" << std::endl;
+			zmq_ctx_destroy(zmqcontext); // this will cause the thread to exit
+			
+			zmqcontext = nullptr;
+			std::cout << "Exiting lock" << std::endl;
+			lock.exit();
 
-        if (! shutdown)
-            createZmqContext();// and this will take care that processor graph doesn't attempt to delete the context again
+			if (!stopThread(500))
+			{
+				std::cerr << "Network thread timeout. Forcing thread termination, system could be lefr in an unstable state" << std::endl;
+			}
+
+			if (!shutdown)
+				createZmqContext();// and this will take care that processor graph doesn't attempt to delete the context again
+		}
+		else {
+			std::cout << "Could not close router." << std::endl;
+		}
+		
 	
     }
 
@@ -315,11 +325,8 @@ void ProtobufPlugin::register_for_msg(String msg_id)
 	// # io.register_for_message('request_system_status', handle_system_status)
 
 	message_header* header = message.mutable_header(); // = message.header;
-	header->set_host(SystemStats::getComputerName().getCharPointer());
-	header->set_process(String("Open_Ephys").getCharPointer());
-	header->set_timestamp(9999.0);
-	header->set_message_id(msg_id.toStdString());
-
+	generate_msg_header(header, msg_id);
+	
 	//message.set_allocated_header(header);
 	message.set_message_id(msg_id.toStdString());
 
@@ -329,37 +336,44 @@ void ProtobufPlugin::register_for_msg(String msg_id)
 	std::string message_id = String("register_for_message").toStdString();
 	std::string message_string = message.SerializeAsString();
 
-	int rc = zmq_send(router, resp1.c_str(), resp1.length(), ZMQ_SNDMORE);
-	rc = zmq_send(router, message_id.c_str(), message_id.length(), ZMQ_SNDMORE);
-	rc = zmq_send(router, message_string.c_str(), message_string.length(), 0);
+	send_multipart_msg(resp1, message_id, message_string);
+
 }
 
-void ProtobufPlugin::handle_msg(std::string msg)
+void ProtobufPlugin::send_multipart_msg(std::string part1, std::string part2, std::string part3)
+{
+	int rc = zmq_send(router, part1.c_str(), part1.length(), ZMQ_SNDMORE);
+	rc = zmq_send(router, part2.c_str(), part2.length(), ZMQ_SNDMORE);
+	rc = zmq_send(router, part3.c_str(), part3.length(), 0);
+}
+
+void ProtobufPlugin::generate_msg_header(message_header* header, String id)
+{
+	header->set_host(SystemStats::getComputerName().getCharPointer());
+	header->set_process(String("Open_Ephys").getCharPointer());
+	header->set_timestamp(float(Time::currentTimeMillis()));
+	header->set_message_id(id.toStdString());
+}
+
+void ProtobufPlugin::handle_msg(std::string msg, String message_id)
 {
 	std::cout << "Handling that message." << std::endl;
 
-	//std::cout << msg << std::endl;
+	
+	
+	
+	
+	
 
-	request_system_info rsi;
-	request_system_status rss;
+	//String message_id;
 
-	std::string message_id;
-
-	if (rsi.ParseFromString(msg))
+	if (message_id.equalsIgnoreCase("request_system_info"))
 	{
-		message_header header = rsi.header();
-		message_id = header.message_id();
-		std::cout << "Message id: " << header.message_id() << std::endl;
-	}
-
-	std::string info_string = "request_system_info";
-
-	std::cout << message_id << " " << info_string << std::endl;
-
-	if (true)
-	{
+		request_system_info rsi;
+		rsi.ParseFromString(msg);
 
 		String id = String("system_info");
+		CoreServices::sendStatusMessage(String("Message: request_system_info."));
 
 		system_info info;
 		std::string version_string = String("version string").toStdString();
@@ -368,19 +382,87 @@ void ProtobufPlugin::handle_msg(std::string msg)
 		info.set_hardware_revision(revision_string.c_str());
 
 		message_header* header = info.mutable_header();
-		header->set_host(SystemStats::getComputerName().getCharPointer());
-		header->set_process(String("Open_Ephys").getCharPointer());
-		header->set_timestamp(9999.0);
-		header->set_message_id(id.toStdString());
+		generate_msg_header(header, id);
 
 		std::string resp1 = String("router").toStdString();
 		std::string resp2 = id.toStdString();
 		std::string message_string = info.SerializeAsString();
 
-		int rc = zmq_send(router, resp1.c_str(), resp1.length(), ZMQ_SNDMORE);
-		rc = zmq_send(router, resp2.c_str(), resp2.length(), ZMQ_SNDMORE);
-		rc = zmq_send(router, message_string.c_str(), message_string.length(), 0);
+		send_multipart_msg(resp1, resp2, message_string);
 
+	}
+	else if (message_id.equalsIgnoreCase("request_system_status")) // request_system_status
+	{
+		request_system_status rss;
+		rss.ParseFromString(msg);
+
+		String id = String("system_status");
+
+		CoreServices::sendStatusMessage(String("Message: request_system_status."));
+
+		system_status status;
+		status.set_status(system_status_status_type_READY);
+
+		message_header* header = status.mutable_header();
+		generate_msg_header(header, id);
+
+		std::string resp1 = String("router").toStdString();
+		std::string resp2 = id.toStdString();
+		std::string message_string = status.SerializeAsString();
+
+		send_multipart_msg(resp1, resp2, message_string);
+	}
+	else if (message_id.equalsIgnoreCase("acquisition")) // acquisition
+	{
+
+		acquisition acq;
+		acq.ParseFromString(msg);
+
+		if (acq.command() == 0)
+		{
+			// stop acquisition
+			CoreServices::sendStatusMessage(String("Message: stop acquisition."));
+			CoreServices::setAcquisitionStatus(false);
+		}
+		else {
+			// start acquisition
+			CoreServices::sendStatusMessage(String("Message: start acquisition."));
+			CoreServices::setAcquisitionStatus(true);
+		}
+	}
+	else if (message_id.equalsIgnoreCase("recording")) // recording
+	{
+
+		recording rec;
+		rec.ParseFromString(msg);
+
+		if (rec.command() == 0)
+		{
+			// stop recording
+			CoreServices::sendStatusMessage(String("Message: stop recording."));
+			CoreServices::setRecordingStatus(false);
+			//return String("StartedRecording");
+		}
+		else {
+			CoreServices::sendStatusMessage(String("Message: start recording."));
+			CoreServices::setRecordingStatus(true);
+			// start recording
+		}
+	}
+	else if (message_id.equalsIgnoreCase("set_data_file_path")) // set data file path
+	{
+
+		set_data_file_path sdfp;
+		sdfp.ParseFromString(msg);
+
+		CoreServices::sendStatusMessage(String("Message: set_data_file_path."));
+		String path = String(sdfp.path());
+		CoreServices::setPrependTextToRecordingDir(path);
+		CoreServices::createNewRecordingDir();
+
+	}
+	else {
+		CoreServices::sendStatusMessage(String("Message: not recognized."));
 	}
 
 }
@@ -410,7 +492,11 @@ void ProtobufPlugin::run()
 	}
 
 	std::cout << "Registering for messages" << std::endl;
+	register_for_msg("set_data_file_path");
 	register_for_msg("request_system_info");
+	register_for_msg("request_system_status");
+	register_for_msg("acquisition");
+	register_for_msg("recording");
     // # io.register_for_message('request_system_info', handle_system_info)
 	// # io.register_for_message('set_data_file_path', handle_set_data_file_path)
 
@@ -443,7 +529,9 @@ void ProtobufPlugin::run()
 				rc = zmq_recv(router, buffer, MAX_MESSAGE_LENGTH - 1, 0);
 				
 				std::string s(reinterpret_cast<char const*> (buffer));
-				memset(buffer, 0, sizeof(buffer));
+				std::cout << "Received: " << std::endl;
+				std::cout << s << std::endl;
+				memset(buffer, 0, MAX_MESSAGE_LENGTH);
 	
 				//std::cout << messageNum << std::endl;
 				//std::cout << s << std::endl;
@@ -451,15 +539,15 @@ void ProtobufPlugin::run()
 
 				if (messageNum == 0) // client
 				{
-					CoreServices::sendStatusMessage(String("Message received."));
+					
 				}
 				else if (messageNum == 1) // message_id
 				{
-					//String message_id = msg;
+					message_id = String(s);
 				}
 				else if (messageNum == 2)
 				{
-					handle_msg(s);
+					handle_msg(s, message_id);
 				}
 
 				messageNum++;

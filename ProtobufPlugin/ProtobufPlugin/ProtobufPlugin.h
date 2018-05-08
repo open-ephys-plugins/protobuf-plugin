@@ -101,7 +101,9 @@ private:
     bool firstTime;
 
 	void register_for_msg(String message_id);
-	void handle_msg(std::string msg);
+	void handle_msg(std::string msg, String message_id);
+	void send_multipart_msg(std::string part1, std::string part2, std::string part3);
+	void generate_msg_header(message_header* header, String id);
 
     Time timer;
 
