@@ -47,6 +47,8 @@ public:
     void buttonEvent(Button* button);
 	void labelTextChanged(juce::Label *);
 	void setLabelColor(juce::Colour color);
+
+	void refreshValues();
 private:
 
 	ScopedPointer<UtilityButton> restartConnection;

@@ -60,8 +60,6 @@ ProtobufPlugin::ProtobufPlugin()
 	url = "10.128.50.207";
     threadRunning = false;
 
-    opensocket();
-
     sendSampleCount = false; // disable updating the continuous buffer sample counts,
     // since this processor only sends events
     shutdown = false;
@@ -82,6 +80,9 @@ void ProtobufPlugin::setNewListeningPort(int port)
 
     urlport = port;
     opensocket();
+
+	ProtobufPluginEditor* e = (ProtobufPluginEditor*)getEditor();
+	e->refreshValues();
 }
 
 void ProtobufPlugin::setNewListeningUrl(String _url)
@@ -98,6 +99,9 @@ void ProtobufPlugin::setNewListeningUrl(String _url)
 
 	url = _url;
 	opensocket();
+
+	ProtobufPluginEditor* e = (ProtobufPluginEditor*)getEditor();
+	e->refreshValues();
 }
 
 
@@ -116,6 +120,13 @@ bool ProtobufPlugin::closesocket()
     {
 		lock.enter();
 		std::cout << "Closing router." << std::endl;
+
+		if (!stopThread(500))
+		{
+			std::cerr << "Network thread timeout. Forcing thread termination, system could be left in an unstable state" << std::endl;
+			return false;
+		}
+
 		if (zmq_close(router) == 0)
 		{
 			std::cout << "Destroying context" << std::endl;
@@ -124,11 +135,6 @@ bool ProtobufPlugin::closesocket()
 			zmqcontext = nullptr;
 			std::cout << "Exiting lock" << std::endl;
 			lock.exit();
-
-			if (!stopThread(500))
-			{
-				std::cerr << "Network thread timeout. Forcing thread termination, system could be lefr in an unstable state" << std::endl;
-			}
 
 			if (!shutdown)
 				createZmqContext();// and this will take care that processor graph doesn't attempt to delete the context again
@@ -358,12 +364,6 @@ void ProtobufPlugin::generate_msg_header(message_header* header, String id)
 void ProtobufPlugin::handle_msg(std::string msg, String message_id)
 {
 	std::cout << "Handling that message." << std::endl;
-
-	
-	
-	
-	
-	
 
 	//String message_id;
 
@@ -598,8 +598,9 @@ void ProtobufPlugin::setEnabledState(bool newState)
 
 void ProtobufPlugin::saveCustomParametersToXml(XmlElement* parentElement)
 {
-    XmlElement* mainNode = parentElement->createNewChildElement ("NETWORKEVENTS");
+    XmlElement* mainNode = parentElement->createNewChildElement ("PROTOBUF_PLUGIN");
     mainNode->setAttribute ("port", urlport);
+	mainNode->setAttribute("url", url);
 }
 
 
@@ -609,8 +610,9 @@ void ProtobufPlugin::loadCustomParametersFromXml()
     {
         forEachXmlChildElement (*parametersAsXml, mainNode)
         {
-            if (mainNode->hasTagName ("NETWORKEVENTS"))
+            if (mainNode->hasTagName ("PROTOBUF_PLUGIN"))
             {
+				url = mainNode->getStringAttribute("url"); 
                 setNewListeningPort (mainNode->getIntAttribute("port"));
             }
         }

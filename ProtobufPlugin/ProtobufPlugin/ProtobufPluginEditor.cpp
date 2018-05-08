@@ -69,6 +69,13 @@ ProtobufPluginEditor::ProtobufPluginEditor(GenericProcessor* parentNode, bool us
 
 }
 
+void ProtobufPluginEditor::refreshValues()
+{
+	ProtobufPlugin *p = (ProtobufPlugin *)getProcessor();
+	urlEditor->setText(String(p->url), dontSendNotification);
+	portEditor->setText(String(p->urlport), dontSendNotification);
+}
+
 
 
 void ProtobufPluginEditor::buttonEvent(Button* button)
