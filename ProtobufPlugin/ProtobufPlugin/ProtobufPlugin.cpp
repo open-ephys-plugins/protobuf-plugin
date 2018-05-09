@@ -69,27 +69,33 @@ ProtobufPlugin::ProtobufPlugin()
 void ProtobufPlugin::setNewListeningPort(int port)
 {
     // first, close existing thread.
-    closesocket();
+    bool shutdown_ok = closesocket();
 
     // allow some time for thread to quit
+
+	if (shutdown_ok)
+	{
 #ifdef WIN32
-    Sleep (300);
+		Sleep(300);
 #else
-    usleep (300 * 1000);
+		usleep(300 * 1000);
 #endif
+		urlport = port;
+		opensocket();
 
-    urlport = port;
-    opensocket();
+		ProtobufPluginEditor* e = (ProtobufPluginEditor*)getEditor();
+		e->refreshValues();
+	}
 
-	ProtobufPluginEditor* e = (ProtobufPluginEditor*)getEditor();
-	e->refreshValues();
 }
 
 void ProtobufPlugin::setNewListeningUrl(String _url)
 {
 	// first, close existing thread.
-	closesocket();
+	bool shutdown_ok = closesocket();
 
+	if (shutdown_ok)
+	{
 	// allow some time for thread to quit
 #ifdef WIN32
 	Sleep(300);
@@ -102,6 +108,7 @@ void ProtobufPlugin::setNewListeningUrl(String _url)
 
 	ProtobufPluginEditor* e = (ProtobufPluginEditor*)getEditor();
 	e->refreshValues();
+	}
 }
 
 
@@ -114,35 +121,48 @@ ProtobufPlugin::~ProtobufPlugin()
 
 bool ProtobufPlugin::closesocket()
 {
-    std::cout << "Disabling network node" << std::endl;
+    std::cout << "Closing socket" << std::endl;
 
     if (threadRunning)
     {
-		lock.enter();
-		std::cout << "Closing router." << std::endl;
+		//lock.enter();
+		//std::cout << "Closing router." << std::endl;
+
+		//std::cout << "Destroying context" << std::endl;
+		 // this will cause the thread to exit
+			
+			//zmqcontext = nullptr;
+
+		
+		//}
+		//else {
+		//	std::cout << "Could not close router." << std::endl;
+	//	/}
 
 		if (!stopThread(500))
 		{
-			std::cerr << "Network thread timeout. Forcing thread termination, system could be left in an unstable state" << std::endl;
+			std::cerr << "Failed to stop thread." << std::endl;
 			return false;
 		}
-
-		if (zmq_close(router) == 0)
-		{
-			std::cout << "Destroying context" << std::endl;
-			zmq_ctx_destroy(zmqcontext); // this will cause the thread to exit
-			
-			zmqcontext = nullptr;
-			std::cout << "Exiting lock" << std::endl;
-			lock.exit();
-
-			if (!shutdown)
-				createZmqContext();// and this will take care that processor graph doesn't attempt to delete the context again
-		}
 		else {
-			std::cout << "Could not close router." << std::endl;
+			//zmq_ctx_shutdown(zmqcontext);
+			
+			//zmq_ctx_term(zmqcontext);
+			//zmq_ctx_destroy(zmqcontext);
+
+			std::cout << "Successfully shut down thread" << std::endl;
+
+			if (shutdown)
+			{
+				std::cout << "Destroying context" << std::endl;
+				zmq_close(router);
+				zmq_ctx_destroy(zmqcontext);
+			}
+				
+				//createZmqContext();// and this will take care that processor graph doesn't attempt to delete the context again
 		}
-		
+
+		//lock.exit();
 	
     }
 
@@ -323,7 +343,9 @@ void ProtobufPlugin::process(AudioSampleBuffer& buffer)
 
 void ProtobufPlugin::opensocket()
 {
-    startThread();
+	std::cout << "Opening socket." << std::endl;
+	if (!threadRunning)
+		startThread();
 }
 
 void ProtobufPlugin::register_for_msg(String msg_id)
@@ -336,13 +358,15 @@ void ProtobufPlugin::register_for_msg(String msg_id)
 	//message.set_allocated_header(header);
 	message.set_message_id(msg_id.toStdString());
 
-	std::cout << message.message_id() << std::endl;
+	std::cout << "  " << message.message_id() << std::endl;
 	
 	std::string resp1 = String("router").toStdString();
 	std::string message_id = String("register_for_message").toStdString();
 	std::string message_string = message.SerializeAsString();
 
 	send_multipart_msg(resp1, message_id, message_string);
+
+	
 
 }
 
@@ -351,6 +375,12 @@ void ProtobufPlugin::send_multipart_msg(std::string part1, std::string part2, st
 	int rc = zmq_send(router, part1.c_str(), part1.length(), ZMQ_SNDMORE);
 	rc = zmq_send(router, part2.c_str(), part2.length(), ZMQ_SNDMORE);
 	rc = zmq_send(router, part3.c_str(), part3.length(), 0);
+
+#ifdef WIN32
+	Sleep(20);
+#else
+	usleep(20 * 1000);
+#endif
 }
 
 void ProtobufPlugin::generate_msg_header(message_header* header, String id)
@@ -474,11 +504,13 @@ void ProtobufPlugin::run()
     router = zmq_socket (zmqcontext, ZMQ_ROUTER);
 	int timeoutvalue = 100;
 	int probe_router = 1;
+	int lingervalue = 0;
 	String identitystring = String("OpenEphys_") + SystemStats::getComputerName() + "_" + String(_getpid());
 	std::string identity = identitystring.toStdString();
 	zmq_setsockopt(router, ZMQ_RCVTIMEO, &timeoutvalue, sizeof timeoutvalue);
 	zmq_setsockopt(router, ZMQ_IDENTITY, identity.c_str(), identity.length());
 	zmq_setsockopt(router, ZMQ_PROBE_ROUTER, &probe_router, sizeof probe_router);
+	zmq_setsockopt(router, ZMQ_LINGER, &lingervalue, sizeof lingervalue);
     String full_url = String ("tcp://") + String(url) + ":" + String (urlport);
 
 	std::cout << "Connecting to " << full_url << std::endl;
@@ -488,10 +520,18 @@ void ProtobufPlugin::run()
 	{
 		// failed to open socket?
 		std::cout << "Failed to open socket: " << zmq_strerror(zmq_errno()) << std::endl;
+		zmq_close(router);
 		return;
 	}
 
-	std::cout << "Registering for messages" << std::endl;
+	// allow time for connection to register
+#ifdef WIN32
+	Sleep(500);
+#else
+	usleep(500 * 1000);
+#endif
+
+	std::cout << "Registering for messages:" << std::endl;
 	register_for_msg("set_data_file_path");
 	register_for_msg("request_system_info");
 	register_for_msg("request_system_status");
@@ -511,12 +551,9 @@ void ProtobufPlugin::run()
     unsigned char* buffer = new unsigned char[MAX_MESSAGE_LENGTH];
     int result = -1;
 
-	int64_t more;
-	size_t more_size = sizeof more;
-
-	while (threadRunning)
+	while (!threadShouldExit())
 	{
-		int rc = zmq_poll(item, 2, -1);
+		int rc = zmq_poll(item, 2, 100);
 
 		if (item[0].revents & ZMQ_POLLIN)
 		{
@@ -524,6 +561,8 @@ void ProtobufPlugin::run()
 
 			int messageNum = 0;
 			String message_id;
+			int64_t more = 0;
+			size_t more_size = sizeof more;
 
 			do {
 				rc = zmq_recv(router, buffer, MAX_MESSAGE_LENGTH - 1, 0);
@@ -559,10 +598,12 @@ void ProtobufPlugin::run()
 		}
     }
 
-    zmq_close (router);
+    //zmq_close (router);
 
     delete[] buffer;
     threadRunning = false;
+
+	zmq_close(router);
 
     return;
 }
