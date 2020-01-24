@@ -102,7 +102,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\Users\joshs\Documents\protobuf-3.5.1\src;C:\Users\joshs\Documents\GitHub\plugin-GUI\JuceLibraryCode\modules;C:\Users\joshs\Documents\GitHub\plugin-GUI\Source\Plugins\Headers;C:\Users\joshs\Documents\GitHub\plugin-GUI\JuceLibraryCode;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\svc_neuropix\Documents\protobuf-3.5.1\src;C:\Users\svc_neuropix\Documents\GitHub\plugin-GUI\JuceLibraryCode\modules;C:\Users\svc_neuropix\Documents\GitHub\plugin-GUI\Source\Plugins\Headers;C:\Users\svc_neuropix\Documents\GitHub\plugin-GUI\JuceLibraryCode;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -110,7 +110,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>libprotobuf.lib;libprotobuf-lite.lib;libprotoc.lib;libzmq-v120-mt-4_0_4.lib;libzmq-v120-mt-gd-4_0_4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\joshs\Documents\GitHub\protobuf-plugin\ProtobufPlugin\ProtobufPlugin\resources\lib32;C:\Users\joshs\Documents\GitHub\plugin-GUI\Builds\VisualStudio2013\Release\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\svc_neuropix\Documents\GitHub\protobuf-plugin\ProtobufPlugin\ProtobufPlugin\resources\lib32;C:\Users\svc_neuropix\Documents\GitHub\plugin-GUI\Builds\VisualStudio2013\Release\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -119,7 +119,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\Users\joshs\Documents\protobuf-3.5.1\src;C:\Users\joshs\Documents\GitHub\plugin-GUI\JuceLibraryCode\modules;C:\Users\joshs\Documents\GitHub\plugin-GUI\Source\Plugins\Headers;C:\Users\joshs\Documents\GitHub\plugin-GUI\JuceLibraryCode;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\svc_neuropix\Documents\protobuf-3.5.1\src;C:\Users\svc_neuropix\Documents\GitHub\plugin-GUI\JuceLibraryCode\modules;C:\Users\svc_neuropix\Documents\GitHub\plugin-GUI\Source\Plugins\Headers;C:\Users\svc_neuropix\Documents\GitHub\plugin-GUI\JuceLibraryCode;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -127,7 +127,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>libprotobuf.lib;libprotobuf-lite.lib;libprotoc.lib;libzmq-v120-mt-4_0_4.lib;libzmq-v120-mt-gd-4_0_4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\joshs\Documents\GitHub\protobuf-plugin\ProtobufPlugin\ProtobufPlugin\resources\lib32;C:\Users\joshs\Documents\GitHub\plugin-GUI\Builds\VisualStudio2013\Release\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\svc_neuropix\Documents\GitHub\protobuf-plugin\ProtobufPlugin\ProtobufPlugin\resources\lib64;C:\Users\svc_neuropix\Documents\GitHub\plugin-GUI\Builds\VisualStudio2013\x64\Release\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -146,11 +146,11 @@
     <ClInclude Include="..\resources\zmq_utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\resources\lib32\libprotobuf-lite.lib" />
-    <Library Include="..\resources\lib32\libprotobuf.lib" />
-    <Library Include="..\resources\lib32\libprotoc.lib" />
-    <Library Include="..\resources\lib32\libzmq-v120-mt-4_0_4.lib" />
-    <Library Include="..\resources\lib32\libzmq-v120-mt-gd-4_0_4.lib" />
+    <Library Include="..\resources\lib64\libprotobuf-lite.lib" />
+    <Library Include="..\resources\lib64\libprotobuf.lib" />
+    <Library Include="..\resources\lib64\libprotoc.lib" />
+    <Library Include="..\resources\lib64\libzmq-v120-mt-4_0_4.lib" />
+    <Library Include="..\resources\lib64\libzmq-v120-mt-gd-4_0_4.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

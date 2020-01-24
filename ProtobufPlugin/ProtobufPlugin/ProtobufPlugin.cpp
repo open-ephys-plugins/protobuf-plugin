@@ -57,7 +57,7 @@ ProtobufPlugin::ProtobufPlugin()
     firstTime = true;
     router = nullptr;
     urlport = 9928;
-	url = "10.128.50.48";
+	url = "10.128.50.155";
     threadRunning = false;
 
     sendSampleCount = false; // disable updating the continuous buffer sample counts,

@@ -52,19 +52,19 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\resources\lib32\libprotobuf.lib">
+    <Library Include="..\resources\lib64\libprotobuf.lib">
       <Filter>Resource Files</Filter>
     </Library>
-    <Library Include="..\resources\lib32\libprotobuf-lite.lib">
+    <Library Include="..\resources\lib64\libprotobuf-lite.lib">
       <Filter>Resource Files</Filter>
     </Library>
-    <Library Include="..\resources\lib32\libprotoc.lib">
+    <Library Include="..\resources\lib64\libprotoc.lib">
       <Filter>Resource Files</Filter>
     </Library>
-    <Library Include="..\resources\lib32\libzmq-v120-mt-4_0_4.lib">
+    <Library Include="..\resources\lib64\libzmq-v120-mt-4_0_4.lib">
       <Filter>Resource Files</Filter>
     </Library>
-    <Library Include="..\resources\lib32\libzmq-v120-mt-gd-4_0_4.lib">
+    <Library Include="..\resources\lib64\libzmq-v120-mt-gd-4_0_4.lib">
       <Filter>Resource Files</Filter>
     </Library>
   </ItemGroup>
