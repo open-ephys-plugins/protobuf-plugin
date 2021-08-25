@@ -416,6 +416,7 @@ bool system_status_status_type_IsValid(int value) {
   }
 }
 
+/*
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const system_status_status_type system_status::READY;
 const system_status_status_type system_status::BUSY;
@@ -424,6 +425,8 @@ const system_status_status_type system_status::status_type_MIN;
 const system_status_status_type system_status::status_type_MAX;
 const int system_status::status_type_ARRAYSIZE;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
+*/
+
 const ::google::protobuf::EnumDescriptor* acquisition_command_type_descriptor() {
   protobuf_ephys_5fedi_2eproto::protobuf_AssignDescriptorsOnce();
   return protobuf_ephys_5fedi_2eproto::file_level_enum_descriptors[1];

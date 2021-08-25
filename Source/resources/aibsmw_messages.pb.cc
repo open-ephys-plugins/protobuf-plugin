@@ -759,6 +759,7 @@ bool system_notification_status_type_IsValid(int value) {
   }
 }
 
+/*
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const system_notification_status_type system_notification::ERROR;
 const system_notification_status_type system_notification::UPDATE;
@@ -766,6 +767,7 @@ const system_notification_status_type system_notification::status_type_MIN;
 const system_notification_status_type system_notification::status_type_MAX;
 const int system_notification::status_type_ARRAYSIZE;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
+*/
 
 // ===================================================================
 
