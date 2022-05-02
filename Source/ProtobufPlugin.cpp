@@ -22,7 +22,6 @@
 */
 
 #include <stdio.h>
-#include <process.h>
 #include <string.h>
 #include "ProtobufPlugin.h"
 #include "ProtobufPluginEditor.h"
@@ -33,10 +32,10 @@ const int MAX_MESSAGE_LENGTH = 64000;
 
 #ifdef WIN32
     #include <windows.h>
+    #include <process.h>
 #else
     #include <unistd.h>
 #endif
-
 
 
 /*********************************************/
@@ -45,9 +44,7 @@ void* ProtobufPlugin::zmqcontext = nullptr;
 ProtobufPlugin::ProtobufPlugin()
     : GenericProcessor  ("Protobuf Module")
     , Thread            ("ProtobufThread")
-    , state             (false)
 {
-    setProcessorType (PROCESSOR_TYPE_SOURCE);
 
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -63,8 +60,19 @@ ProtobufPlugin::ProtobufPlugin()
     sendSampleCount = false; // disable updating the continuous buffer sample counts,
     // since this processor only sends events
     shutdown = false;
+    
+    isEnabled = false;
 }
 
+int ProtobufPlugin::getListeningPort ()
+{
+    return urlport;
+}
+
+String ProtobufPlugin::getListeningUrl ()
+{
+    return url;
+}
 
 void ProtobufPlugin::setNewListeningPort(int port)
 {
@@ -125,31 +133,12 @@ bool ProtobufPlugin::closesocket()
 
     if (threadRunning)
     {
-		//lock.enter();
-		//std::cout << "Closing router." << std::endl;
-
-		//std::cout << "Destroying context" << std::endl;
-		 // this will cause the thread to exit
-			
-			//zmqcontext = nullptr;
-
-		
-		//}
-		//else {
-		//	std::cout << "Could not close router." << std::endl;
-	//	/}
-
 		if (!stopThread(500))
 		{
 			std::cerr << "Failed to stop thread." << std::endl;
 			return false;
 		}
 		else {
-			//zmq_ctx_shutdown(zmqcontext);
-			
-			//zmq_ctx_term(zmqcontext);
-			//zmq_ctx_destroy(zmqcontext);
-
 			std::cout << "Successfully shut down thread" << std::endl;
 
 			if (shutdown)
@@ -158,192 +147,27 @@ bool ProtobufPlugin::closesocket()
 				zmq_close(router);
 				zmq_ctx_destroy(zmqcontext);
 			}
-				
-				//createZmqContext();// and this will take care that processor graph doesn't attempt to delete the context again
 		}
-
-		//lock.exit();
-	
     }
 
     return true;
 }
 
 
-void ProtobufPlugin::createEventChannels()
-{
-	//EventChannel* chan = new EventChannel(EventChannel::TEXT, 1, MAX_MESSAGE_LENGTH, CoreServices::getGlobalSampleRate(), this);
-	//chan->setName("Network messages");
-	//chan->setDescription("Messages received through the network events module");
-	//chan->setIdentifier("external.network.rawData");
-	//chan->addEventMetaData(new MetaDataDescriptor(MetaDataDescriptor::INT64, 1, "Software timestamp",
-	//	"OS high resolution timer count when the event was received", "timestamp.software"));
-	//eventChannelArray.add(chan);
-	//messageChannel = chan;
-}
-
-
 AudioProcessorEditor* ProtobufPlugin::createEditor()
 {
-    editor = new ProtobufPluginEditor (this, true);
+    
+    editor = std::make_unique<ProtobufPluginEditor> (this);
 
-    return editor;
-}
+    return editor.get();
 
-
-void ProtobufPlugin::setParameter(int parameterIndex, float newValue)
-{
-    /*
-       editor->updateParameterButtons(parameterIndex);
-
-       Parameter& p =  parameters.getReference(parameterIndex);
-       p.setValue(newValue, 0);
-
-       threshold = newValue;
-    */
-    //std::cout << float(p[0]) << std::endl;
-}
-
-
-String ProtobufPlugin::handleMessage(String msg)
-{
-	/**
-
-    String s = msg.getString();
-
-    StringArray inputs = StringArray::fromTokens (s, " ");
-    String cmd = String (inputs[0]);
-
-    const MessageManagerLock mmLock;
-    if (cmd.compareIgnoreCase ("StartAcquisition") == 0)
-    {
-        if (! CoreServices::getAcquisitionStatus())
-        {
-            CoreServices::setAcquisitionStatus (true);
-        }
-        return String ("StartedAcquisition");
-    }
-    else if (cmd.compareIgnoreCase ("StopAcquisition") == 0)
-    {
-        if (CoreServices::getAcquisitionStatus())
-        {
-            CoreServices::setAcquisitionStatus (false);
-        }
-        return String ("StoppedAcquisition");
-    }
-    else if (String ("StartRecord").compareIgnoreCase (cmd) == 0)
-    {
-        if (! CoreServices::getRecordingStatus() 
-            && CoreServices::getAcquisitionStatus())
-        {
-            if (s.contains ("="))
-            {
-                String params = s.substring (cmd.length());
-                StringPairArray dict = parseNetworkMessage (params);
-
-                StringArray keys = dict.getAllKeys();
-                for (int i = 0; i < keys.size(); ++i)
-                {
-                    String key   = keys[i];
-                    String value = dict[key];
-
-                    if (key.compareIgnoreCase ("CreateNewDir") == 0)
-                    {
-                        if (value.compareIgnoreCase ("1") == 0)
-                        {
-                            CoreServices::createNewRecordingDir();
-                        }
-                    }
-                    else if (key.compareIgnoreCase ("RecDir") == 0)
-                    {
-                        CoreServices::setRecordingDirectory (value);
-                    }
-                    else if (key.compareIgnoreCase ("PrependText") == 0)
-                    {
-                        CoreServices::setPrependTextToRecordingDir (value);
-                    }
-                    else if (key.compareIgnoreCase ("AppendText") == 0)
-                    {
-                        CoreServices::setAppendTextToRecordingDir (value);
-                    }
-                }
-            }
-
- 
-            CoreServices::setRecordingStatus (true);
-            return String ("StartedRecording");
-        }
-    }
-    else if (String ("StopRecord").compareIgnoreCase (cmd) == 0)
-    {
-        if (CoreServices::getRecordingStatus())
-        {
-            CoreServices::setRecordingStatus (false);
-            return String ("StoppedRecording");
-        }
-    }
-    else if (cmd.compareIgnoreCase ("IsAcquiring") == 0)
-    {
-        String status = CoreServices::getAcquisitionStatus() ? String ("1") : String ("0");
-        return status;
-    }
-    else if (cmd.compareIgnoreCase ("IsRecording") == 0)
-    {
-        String status = CoreServices::getRecordingStatus() ? String ("1") : String ("0");
-        return status;
-    }
-    else if (cmd.compareIgnoreCase ("GetRecordingPath") == 0)
-    {
-        File file = CoreServices::RecordNode::getRecordingPath();
-        String msg (file.getFullPathName());
-        return msg;
-    }
-    else if (cmd.compareIgnoreCase ("GetRecordingNumber") == 0)
-    {
-        String status;
-        status += (CoreServices::RecordNode::getRecordingNumber() + 1);
-        return status;
-    }
-    else if (cmd.compareIgnoreCase ("GetExperimentNumber") == 0)
-    {
-        String status;
-        status += CoreServices::RecordNode::getExperimentNumber();
-        return status;
-	}
-
-	std::string cmd2 = cmd.toStdString();
-
-	request_system_status rss;
-	if (rss.ParseFromString(cmd2))
-	{
-		// do the thing
-	}
-
-	*/
-    return String ("NotHandled");
-}
-
-
-void ProtobufPlugin::process(AudioSampleBuffer& buffer)
-{
-    setTimestampAndSamples(CoreServices::getGlobalTimestamp(),0);
-
-    lock.enter();
-    //while (! networkMessagesQueue.empty())
-    //{
-    //    String msg = networkMessagesQueue.front();
-    //    postTimestamppedStringToMidiBuffer (msg);
-        
-    //    networkMessagesQueue.pop();
-    //}
-
-    lock.exit();
 }
 
 
 void ProtobufPlugin::opensocket()
 {
 	std::cout << "Opening socket." << std::endl;
+    
 	if (!threadRunning)
 		startThread();
 }
@@ -487,8 +311,9 @@ void ProtobufPlugin::handle_msg(std::string msg, String message_id)
 
 		CoreServices::sendStatusMessage(String("Message: set_data_file_path."));
 		String path = String(sdfp.path());
-		CoreServices::setPrependTextToRecordingDir(path);
-		CoreServices::createNewRecordingDir();
+		
+        CoreServices::setRecordingDirectoryPrependText(path);
+		CoreServices::createNewRecordingDirectory();
 
 	}
 	else {
@@ -505,7 +330,10 @@ void ProtobufPlugin::run()
 	int timeoutvalue = 100;
 	int probe_router = 1;
 	int lingervalue = 0;
-	String identitystring = String("OpenEphys_") + SystemStats::getComputerName() + "_" + String(_getpid());
+    String identitystring = String("OpenEphys_") + SystemStats::getComputerName();
+#ifdef WIN32
+    identitystring += "_" + String(_getpid());
+#endif
 	std::string identity = identitystring.toStdString();
 	zmq_setsockopt(router, ZMQ_RCVTIMEO, &timeoutvalue, sizeof timeoutvalue);
 	zmq_setsockopt(router, ZMQ_IDENTITY, identity.c_str(), identity.length());
@@ -609,55 +437,24 @@ void ProtobufPlugin::run()
 }
 
 
-int ProtobufPlugin::getDefaultNumOutputs() const
-{
-    return 0;
-}
-
-bool ProtobufPlugin::isReady()
-{
-    return true;
-}
 
 
-float ProtobufPlugin::getDefaultSampleRate() const
+void ProtobufPlugin::saveCustomParametersToXml(XmlElement* xml)
 {
-    return 30000.0f;
+    xml->setAttribute ("port", urlport);
+    xml->setAttribute("url", url);
 }
 
 
-float ProtobufPlugin::getDefaultBitVolts() const
+void ProtobufPlugin::loadCustomParametersFromXml(XmlElement* xml)
 {
-    return 0.05f;
+    url = xml->getStringAttribute("url");
+    setNewListeningPort (xml->getIntAttribute("port"));
 }
 
-void ProtobufPlugin::setEnabledState(bool newState)
+void ProtobufPlugin::process(AudioBuffer<float>& buffer)
 {
-    isEnabled = newState;
-}
 
-
-void ProtobufPlugin::saveCustomParametersToXml(XmlElement* parentElement)
-{
-    XmlElement* mainNode = parentElement->createNewChildElement ("PROTOBUF_PLUGIN");
-    mainNode->setAttribute ("port", urlport);
-	mainNode->setAttribute("url", url);
-}
-
-
-void ProtobufPlugin::loadCustomParametersFromXml()
-{
-    if (parametersAsXml != nullptr)
-    {
-        forEachXmlChildElement (*parametersAsXml, mainNode)
-        {
-            if (mainNode->hasTagName ("PROTOBUF_PLUGIN"))
-            {
-				url = mainNode->getStringAttribute("url"); 
-                setNewListeningPort (mainNode->getIntAttribute("port"));
-            }
-        }
-    }
 }
 
 

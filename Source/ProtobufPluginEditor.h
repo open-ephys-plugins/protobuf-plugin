@@ -38,16 +38,29 @@ class ProtobufPlugin;
 
 */
 
-class ProtobufPluginEditor : public GenericEditor,public Label::Listener
+class ProtobufPluginEditor :
+    public GenericEditor,
+    public Button::Listener,
+    public Label::Listener
 {
 public:
-	ProtobufPluginEditor(GenericProcessor* parentNode, bool useDefaultParameterEditors);
-	virtual ~ProtobufPluginEditor();
+    
+    /** Constructor */
+	ProtobufPluginEditor(GenericProcessor* parentNode);
+    
+    /** Destructor */
+    virtual ~ProtobufPluginEditor() { }
 
-    void buttonEvent(Button* button);
+    /** Respond to button clicks*/
+    void buttonClicked(Button* button);
+    
+    /** Respond to label changes */
 	void labelTextChanged(juce::Label *);
+    
+    /** Update label color*/
 	void setLabelColor(juce::Colour color);
 
+    /** Set URL and port numbers*/
 	void refreshValues();
 private:
 

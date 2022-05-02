@@ -43,67 +43,76 @@ class ProtobufPlugin : public GenericProcessor
                     , public Thread
 {
 public:
+    
+    /** Constructor */
 	ProtobufPlugin();
+    
+    /** Destructor*/
 	~ProtobufPlugin();
 
-    // GenericProcessor methods
-    // =========================================================================
+    /** Create editor */
     AudioProcessorEditor* createEditor() override;
 
-    void process (AudioSampleBuffer& buffer) override;
+    /** Process method (not used) */
+    void process (AudioBuffer<float>& buffer) override;
+    
+    /** Set isEnabled to "true" if a connection was made*/
+    void updateSettings() override;
+    
+    /** Save URL and port */
+    void saveCustomParametersToXml (XmlElement* xml) override;
+    
+    /** Load URL and port */
+    void loadCustomParametersFromXml(XmlElement* xml) override;
 
-    void setParameter (int parameterIndex, float newValue) override;
-
-    void createEventChannels() override;
-
-    void setEnabledState (bool newState) override;
-
-    void saveCustomParametersToXml (XmlElement* parentElement) override;
-    void loadCustomParametersFromXml() override;
-
-    bool isReady() override;
-
-    float getDefaultSampleRate() const override;
-    float getDefaultBitVolts()   const override;
-
-    // =========================================================================
-
-    int getDefaultNumOutputs() const;
-
-
-    String handleMessage(String msg);
+    /** Run thread */
+    void run() override;
+    
+    /** Update port (called by editor) */
+    void setNewListeningPort (int port);
+    
+    /** Get listening port (called by editor) */
+    int getListeningPort ();
+    
+    /** Update URL (called by editor) */
+    void setNewListeningUrl(String url);
+    
+    /** Set listening URL (called by editor) */
+    String getListeningUrl ();
+    
+private:
+    
+    /** Creates the ZMQ context */
+    void createZmqContext();
+    
+    /** Split string based on separators */
     std::vector<String> splitString (String S, char sep);
+    
+    /** Split network message into name/value pairs (name1=val1 name2=val2 etc) */
+    StringPairArray parseNetworkMessage (String msg);
 
-    void run();
+    /** Open/close sockets*/
     void opensocket();
     bool closesocket();
-    void setNewListeningPort (int port);
-	void setNewListeningUrl(String url);
-
+    
+    /** ZMQ message functions */
+    void register_for_msg(String message_id);
+    void handle_msg(std::string msg, String message_id);
+    void send_multipart_msg(std::string part1, std::string part2, std::string part3);
+    void generate_msg_header(message_header* header, String id);
+    
     int urlport;
-	String url;
+    String url;
     String socketStatus;
     std::atomic<bool> threadRunning;
 
-	register_for_message message;
-
-
-private:
-    void createZmqContext();
-
-    //* Split network message into name/value pairs (name1=val1 name2=val2 etc) */
-    StringPairArray parseNetworkMessage (String msg);
+    register_for_message message;
 
     static void* zmqcontext;
     void* router;
     bool state;
     bool shutdown;
     bool firstTime;
-
-	void register_for_msg(String message_id);
-	void handle_msg(std::string msg, String message_id);
-	void send_multipart_msg(std::string part1, std::string part2, std::string part3);
-	void generate_msg_header(message_header* header, String id);
 
     Time timer;
 

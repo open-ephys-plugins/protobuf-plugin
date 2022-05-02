@@ -26,8 +26,8 @@
 
 #include <stdio.h>
 
-ProtobufPluginEditor::ProtobufPluginEditor(GenericProcessor* parentNode, bool useDefaultParameterEditors = true)
-    : GenericEditor(parentNode, useDefaultParameterEditors)
+ProtobufPluginEditor::ProtobufPluginEditor(GenericProcessor* parentNode)
+    : GenericEditor(parentNode)
 
 {
 	desiredWidth = 180;
@@ -47,7 +47,7 @@ ProtobufPluginEditor::ProtobufPluginEditor(GenericProcessor* parentNode, bool us
     restartConnection->addListener(this);
     addAndMakeVisible(restartConnection);
 
-	portEditor = new Label("Port", String(p->urlport));
+	portEditor = new Label("Port", String(p->getListeningPort()));
 	portEditor->setBounds(70, 95, 80, 18);
 	portEditor->setFont(Font("Default", 15, Font::plain));
 	portEditor->setColour(Label::textColourId, Colours::white);
@@ -56,7 +56,7 @@ ProtobufPluginEditor::ProtobufPluginEditor(GenericProcessor* parentNode, bool us
 	portEditor->addListener(this);
 	addAndMakeVisible(portEditor);
 
-	urlEditor = new Label("URL", String(p->url));
+	urlEditor = new Label("URL", String(p->getListeningUrl()));
 	urlEditor->setBounds(70, 65, 100, 18);
 	urlEditor->setFont(Font("Default", 15, Font::plain));
 	urlEditor->setColour(Label::textColourId, Colours::white);
@@ -65,25 +65,23 @@ ProtobufPluginEditor::ProtobufPluginEditor(GenericProcessor* parentNode, bool us
 	urlEditor->addListener(this);
 	addAndMakeVisible(urlEditor);
 
-    setEnabledState(false);
-
 }
 
 void ProtobufPluginEditor::refreshValues()
 {
 	ProtobufPlugin *p = (ProtobufPlugin *)getProcessor();
-	urlEditor->setText(String(p->url), dontSendNotification);
-	portEditor->setText(String(p->urlport), dontSendNotification);
+	urlEditor->setText(String(p->getListeningUrl()), dontSendNotification);
+	portEditor->setText(String(p->getListeningPort()), dontSendNotification);
 }
 
 
 
-void ProtobufPluginEditor::buttonEvent(Button* button)
+void ProtobufPluginEditor::buttonClicked(Button* button)
 {
 	if (button == restartConnection)
 	{
 		ProtobufPlugin *p = (ProtobufPlugin *)getProcessor();
-		p->setNewListeningPort(p->urlport);
+		p->setNewListeningPort(p->getListeningPort());
 	}
 
 }
@@ -112,12 +110,6 @@ void ProtobufPluginEditor::labelTextChanged(juce::Label *label)
 		ProtobufPlugin *p = (ProtobufPlugin *)getProcessor();
 		p->setNewListeningUrl(val.getValue());
 	}
-}
-
-
-ProtobufPluginEditor::~ProtobufPluginEditor()
-{
-
 }
 
 
